@@ -61,6 +61,8 @@ class BaseAnalyzer(abc.ABC):
             if event_type not in self.subscribed_events:
                 await self._bus.ack(self._group_name, msg_id)
                 continue
+            
+            log.info("analyzer_intake", analyzer=self.name, event_type=event_type, match_id=event.get("match_id"))
 
             try:
                 feedback_payload = await self.analyze(event)

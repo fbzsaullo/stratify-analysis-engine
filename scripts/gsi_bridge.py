@@ -15,7 +15,10 @@ class GSIHandler(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         payload = json.loads(post_data.decode('utf-8'))
 
-        print(f"Received GSI data from: {payload.get('provider', {}).get('name', 'Unknown')}")
+        player_name = payload.get('player', {}).get('name', 'Unknown')
+        map_name = payload.get('map', {}).get('name', 'Menu/None')
+        
+        print(f"📥 [GSI] Received packet from {player_name} on {map_name}")
 
         # Map GSI to Stratify Events
         events = self.map_gsi_to_stratify(payload)
@@ -73,7 +76,8 @@ class GSIHandler(BaseHTTPRequestHandler):
             print(f" [ERROR] Redis sync failed: {e}")
 
     def log_message(self, format, *args):
-        return # Silence logs to keep console clean
+        # Re-enabling standard logging for server activity
+        super().log_message(format, *args)
 
 def run(server_class=HTTPServer, handler_class=GSIHandler):
     server_address = ('', PORT)
