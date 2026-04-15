@@ -1,6 +1,7 @@
 import json
 import http.client
 import time
+import os
 
 def test_gsi_connection():
     payload = {
@@ -16,11 +17,15 @@ def test_gsi_connection():
         }
     }
 
+    # Internal Docker target or external localhost
+    bridge_host = os.environ.get("GSI_BRIDGE_HOST", "localhost")
+    bridge_port = int(os.environ.get("GSI_BRIDGE_PORT", 3000))
+
     print("🧪 Starting GSI Connectivity Test...")
-    print("Connecting to GSI Bridge at localhost:3000...")
+    print(f"Connecting to GSI Bridge at {bridge_host}:{bridge_port}...")
     
     try:
-        conn = http.client.HTTPConnection("localhost", 3000, timeout=5)
+        conn = http.client.HTTPConnection(bridge_host, bridge_port, timeout=5)
         headers = {'Content-type': 'application/json'}
         json_data = json.dumps(payload)
         
