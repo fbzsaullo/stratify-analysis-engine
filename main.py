@@ -36,7 +36,7 @@ ANALYZERS = [
 
 
 async def main():
-    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    redis_url = os.environ.get("REDIS_URL", "redis://localhost:6381/0")
     log.info("starting_analysis_engine", redis_url=redis_url, analyzers=len(ANALYZERS))
 
     tasks = []

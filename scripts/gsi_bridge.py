@@ -1,10 +1,11 @@
+import os
 import json
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import redis
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Configuration
-REDIS_URL = "redis://localhost:6381/0"
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6381/0")
 STREAM_KEY = "stratify:events"
 PORT = 3000
 

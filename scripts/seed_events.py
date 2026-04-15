@@ -16,6 +16,7 @@ import random
 from datetime import datetime, timezone, timedelta
 
 import redis
+import os
 
 STREAM_KEY = "stratify:events"
 
@@ -133,7 +134,7 @@ def simulate_match(r: redis.Redis, match_id: str, player_id: str, num_rounds: in
 
 def main():
     parser = argparse.ArgumentParser(description="Stratify Seed Events Publisher")
-    parser.add_argument("--redis-url", default="redis://localhost:6379/0")
+    parser.add_argument("--redis-url", default=os.environ.get("REDIS_URL", "redis://localhost:6381/0"))
     parser.add_argument("--matches", type=int, default=3, help="Number of matches to simulate")
     parser.add_argument("--rounds", type=int, default=12, help="Rounds per match")
     args = parser.parse_args()
