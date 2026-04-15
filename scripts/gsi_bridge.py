@@ -9,16 +9,22 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6381/0")
 STREAM_KEY = "stratify:events"
 PORT = 3000
 
+last_log_time = 0
+
 class GSIHandler(BaseHTTPRequestHandler):
     def do_POST(self):
+        global last_log_time
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
         payload = json.loads(post_data.decode('utf-8'))
 
-        player_name = payload.get('player', {}).get('name', 'Unknown')
-        map_name = payload.get('map', {}).get('name', 'Menu/None')
-        
-        print(f"📥 [GSI] Received packet from {player_name} on {map_name}")
+        # Log Throttling: Envia log apenas 1 vez por segundo
+        current_time = time.time()
+        if current_time - last_log_time > 1.0:
+            player_name = payload.get('player', {}).get('name', 'Unknown')
+            map_name = payload.get('map', {}).get('name', 'Menu/None')
+            print(f"📥 [GSI] Listening: {player_name} @ {map_name}")
+            last_log_time = current_time
 
         # Map GSI to Stratify Events
         events = self.map_gsi_to_stratify(payload)
@@ -32,63 +38,45 @@ class GSIHandler(BaseHTTPRequestHandler):
     def map_gsi_to_stratify(self, data):
         """Simple mapping logic for the Bridge MVP."""
         events = []
-        match_id = data.get('map', {}).get('name', 'real_match') # Simplified
+        match_id = data.get('map', {}).get('name', 'real_match')
         player_id = data.get('player', {}).get('steamid', 'real_player')
 
-        # Example: CrosshairMoved simulation (GSI doesn't give raw mouse movement directly, 
-        # but we can map player state changes as events)
         if 'player' in data and 'state' in data['player']:
+            state = data['player']['state']
+            
+            # Exemplo: Detecção de Recarga (Reload)
+            # No GSI real, olharíamos para o estado da arma.
+            # Aqui fazemos um mapeamento simples para fins de demonstração.
             events.append({
-                "event_type": "CrosshairMoved",
-                "occurred_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                "event_id": str(time.time()),
+                "event_type": "GameStateUpdate",
                 "match_id": match_id,
                 "player_id": player_id,
-                "payload": {
-                    "crosshair_offset_degrees": 0.0, # Placeholder
-                    "nearest_enemy_distance": 500.0,  # Placeholder
-                }
+                "payload": state
             })
-
-        # Example: Map reload starts
-        weapons = data.get('player', {}).get('weapons', {})
-        for w in weapons.values():
-            if w.get('state') == 'reloading':
-                events.append({
-                    "event_type": "PlayerReloadStarted",
-                    "occurred_at": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                    "match_id": match_id,
-                    "player_id": player_id,
-                    "payload": {
-                        "weapon": w.get('name'),
-                        "nearest_enemy_distance": 200.0, # Reality check placeholder
-                        "is_in_combat": True
-                    }
-                })
 
         return events
 
     def publish_to_redis(self, event):
         try:
-            r = redis.from_url(REDIS_URL)
+            r = redis.Redis.from_url(REDIS_URL)
             r.xadd(STREAM_KEY, {"data": json.dumps(event)})
-            print(f" [OK] Published {event['event_type']} to Redis")
         except Exception as e:
             print(f" [ERROR] Redis sync failed: {e}")
 
     def log_message(self, format, *args):
-        # Re-enabling standard logging for server activity
-        super().log_message(format, *args)
+        # Silenciando os logs padrão de HTTP 200
+        return
 
 def run(server_class=HTTPServer, handler_class=GSIHandler):
     server_address = ('', PORT)
     httpd = server_class(server_address, handler_class)
-    print(f"🚀 Stratify GSI Bridge running on port {PORT}...")
-    print(f"Listening for CS2 events and bridging to Redis at {REDIS_URL}")
+    print(f"🚀 [GSI Bridge] Listening on port {PORT}...")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        pass
-    httpd.server_close()
+        print("\nStopping GSI Bridge...")
+        httpd.server_close()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()
